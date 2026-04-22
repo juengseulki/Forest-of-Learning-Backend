@@ -121,10 +121,19 @@ export const verifyStudyPassword = async (req, res, next) => {
       req.session.verifiedStudies.push(sid);
     }
 
-    success(res, { verified: true }, '비밀번호 확인 성공');
+    req.session.save((err) => {
+      if (err) return next(err);
+      success(res, { verified: true }, '비밀번호 확인 성공');
+    });
   } catch (err) {
     next(err);
   }
+};
+
+export const checkStudySession = (req, res) => {
+  const studyId = Number(req.params.studyId);
+  const verified = req.session.verifiedStudies?.includes(studyId) ?? false;
+  success(res, { verified });
 };
 
 export const updateStudy = async (req, res, next) => {
