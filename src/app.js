@@ -31,7 +31,6 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
   : [];
 
-// 프록시 환경(Render 등)에서 secure cookie 인식
 if (isProduction) {
   app.set('trust proxy', 1);
 }
@@ -61,11 +60,11 @@ app.use(
     secret: process.env.SESSION_SECRET || 'forest-dev-secret',
     resave: false,
     saveUninitialized: false,
-    proxy: true,
+    proxy: isProduction,
     cookie: {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000,
     },
   })
