@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken';
 import * as studyService from '../services/study.service.js';
 import { success, fail } from '../utils/response.js';
 
@@ -69,6 +70,7 @@ export const getStudies = async (req, res, next) => {
         400
       );
     }
+
     const resolvedOrder = order || 'latest';
     if (!VALID_ORDERS.includes(resolvedOrder)) {
       return fail(
@@ -116,8 +118,10 @@ export const verifyStudyPassword = async (req, res, next) => {
       return fail(res, 'VALIDATION_ERROR', '비밀번호를 입력해주세요.', 400);
     }
 
+    const numericStudyId = Number(studyId);
+
     const result = await studyService.verifyStudyPassword(
-      Number(studyId),
+      numericStudyId,
       password
     );
 
@@ -134,13 +138,18 @@ export const verifyStudyPassword = async (req, res, next) => {
       );
     }
 
-    if (!req.session.verifiedStudies) req.session.verifiedStudies = [];
-    const sid = Number(studyId);
-    if (!req.session.verifiedStudies.includes(sid)) {
-      req.session.verifiedStudies.push(sid);
-    }
+    const token = jwt.sign(
+      {
+        type: 'study-auth',
+        studyId: numericStudyId,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: '1d',
+      }
+    );
 
-    success(res, { verified: true }, '비밀번호 확인 성공');
+    success(res, { verified: true, token }, '비밀번호 확인 성공');
   } catch (err) {
     next(err);
   }
