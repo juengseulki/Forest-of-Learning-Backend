@@ -50,14 +50,33 @@ export const getStudies = async (req, res, next) => {
     const parsedLimit = Number(limit);
 
     if (!Number.isInteger(parsedPage) || parsedPage < 1) {
-      return fail(res, 'VALIDATION_ERROR', 'page는 1 이상의 정수여야 합니다.', 400);
+      return fail(
+        res,
+        'VALIDATION_ERROR',
+        'page는 1 이상의 정수여야 합니다.',
+        400
+      );
     }
-    if (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > MAX_LIMIT) {
-      return fail(res, 'VALIDATION_ERROR', `limit는 1~${MAX_LIMIT} 사이여야 합니다.`, 400);
+    if (
+      !Number.isInteger(parsedLimit) ||
+      parsedLimit < 1 ||
+      parsedLimit > MAX_LIMIT
+    ) {
+      return fail(
+        res,
+        'VALIDATION_ERROR',
+        `limit는 1~${MAX_LIMIT} 사이여야 합니다.`,
+        400
+      );
     }
     const resolvedOrder = order || 'latest';
     if (!VALID_ORDERS.includes(resolvedOrder)) {
-      return fail(res, 'VALIDATION_ERROR', `order는 ${VALID_ORDERS.join(', ')} 중 하나여야 합니다.`, 400);
+      return fail(
+        res,
+        'VALIDATION_ERROR',
+        `order는 ${VALID_ORDERS.join(', ')} 중 하나여야 합니다.`,
+        400
+      );
     }
 
     const result = await studyService.findAllStudies({
@@ -125,6 +144,12 @@ export const verifyStudyPassword = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+
+export const checkStudySession = (req, res) => {
+  const studyId = Number(req.params.studyId);
+  const verified = req.session.verifiedStudies?.includes(studyId) ?? false;
+  return success(res, { verified });
 };
 
 export const updateStudy = async (req, res, next) => {
