@@ -39,7 +39,20 @@ export const getHabits = async (req, res, next) => {
 export const updateHabit = async (req, res, next) => {
   try {
     const { habitId } = req.params;
-    const habit = await habitService.updateHabit(Number(habitId), req.body);
+    const { name, isEnded } = req.body;
+    const updateData = {};
+    if (name !== undefined) {
+      const trimmedName = typeof name === 'string' ? name.trim() : '';
+      if (!trimmedName) return fail(res, 'INVALID_INPUT', '습관 이름을 입력해주세요.');
+      if (trimmedName.length > 50) return fail(res, 'INVALID_INPUT', '습관 이름은 50자 이하여야 합니다.');
+      updateData.name = trimmedName;
+    }
+    if (isEnded !== undefined) {
+      if (typeof isEnded !== 'boolean') return fail(res, 'INVALID_INPUT', 'isEnded는 true/false여야 합니다.');
+      updateData.isEnded = isEnded;
+    }
+    if (Object.keys(updateData).length === 0) return fail(res, 'INVALID_INPUT', '수정할 항목이 없습니다.');
+    const habit = await habitService.updateHabit(Number(habitId), updateData);
     success(res, habit);
   } catch (err) {
     next(err);

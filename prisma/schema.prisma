@@ -37,16 +37,17 @@ model Point {
   study      Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
 }
 
+
 model PointLog {
-  id             Int      @id @default(autoincrement())
-  studyId        Int
+  id             Int           @id @default(autoincrement())
+  studyId        Int           
   amount         Int
   reason         String
-  focusSessionId Int?
-  createdAt      DateTime @default(now())
+  focusSessionId Int?          
+  createdAt      DateTime      @default(now())
 
-  study        Study         @relation(fields: [studyId], references: [id], onDelete: Cascade)
-  focusSession FocusSession? @relation(fields: [focusSessionId], references: [id])
+  study          Study         @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  focusSession   FocusSession? @relation(fields: [focusSessionId], references: [id])
 
   @@index([studyId])
 }
@@ -91,7 +92,7 @@ model FocusSession {
   earnedPoint Int        @default(0)
   startedAt   DateTime
   completedAt DateTime
-  study       Study      @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  study       Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
   pointLogs   PointLog[]
 
   @@index([studyId, startedAt])

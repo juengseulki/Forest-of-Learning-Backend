@@ -6,7 +6,7 @@ export const createHabit = async (data) => {
 
 export const findHabitsByStudyId = async (studyId) => {
   return await prisma.habit.findMany({
-    where: { studyId },
+    where: { studyId, isEnded: false },
     include: { habitRecords: { orderBy: { date: 'asc' } } },
     orderBy: { createdAt: 'asc' },
   });
@@ -42,6 +42,7 @@ export const findHabitRecords = async (studyId, weekStart, weekEnd) => {
   const habitsWithRecords = await prisma.habit.findMany({
     where: {
       studyId: studyId,
+      isEnded: false,
     },
     include: {
       habitRecords: {

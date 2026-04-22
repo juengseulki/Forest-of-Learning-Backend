@@ -12,12 +12,18 @@
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "argon2": "^0.44.0",
+<<<<<<< HEAD
     "axios": "^1.15.2",
+=======
+    "axios": "^1.15.1",
+    "connect-pg-simple": "^10.0.0",
+>>>>>>> 699677964fe50e2429651ce291e403b1f6ef878e
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.2",
     "express-session": "^1.19.0",
+    "pg": "^8.20.0",
     "prisma": "^6.19.3"
   },
   "devDependencies": {
