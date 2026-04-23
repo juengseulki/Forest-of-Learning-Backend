@@ -1,8 +1,5 @@
 import * as studyService from '../services/study.service.js';
 import { success, fail } from '../utils/response.js';
-
-const VALID_ORDERS = ['latest', 'oldest', 'pointDesc', 'pointAsc'];
-
 export const createStudy = async (req, res, next) => {
   try {
     const {
@@ -13,11 +10,9 @@ export const createStudy = async (req, res, next) => {
       password,
       passwordConfirm,
     } = req.body;
-
     if (!nickname || !name || !backgroundId || !password || !passwordConfirm) {
       return fail(res, 'VALIDATION_ERROR', '필수 항목이 누락되었습니다.', 400);
     }
-
     if (password !== passwordConfirm) {
       return fail(
         res,
@@ -26,7 +21,6 @@ export const createStudy = async (req, res, next) => {
         400
       );
     }
-
     const study = await studyService.createStudy({
       nickname,
       name,
@@ -34,24 +28,19 @@ export const createStudy = async (req, res, next) => {
       backgroundId: Number(backgroundId),
       password,
     });
-
-    return success(res, study, 'created', 201);
+    success(res, study, 'created', 201);
   } catch (err) {
     next(err);
   }
 };
-
+const VALID_ORDERS = ['latest', 'oldest', 'pointDesc', 'pointAsc'];
+const MAX_LIMIT = 1000;
 export const getStudies = async (req, res, next) => {
   try {
-    const page = Number(req.query.page ?? 1);
-    const limit = Number(req.query.limit ?? 10);
-    const keyword =
-      typeof req.query.keyword === 'string' ? req.query.keyword.trim() : '';
-    const order = VALID_ORDERS.includes(req.query.order)
-      ? req.query.order
-      : 'latest';
-
-    if (!Number.isInteger(page) || page < 1) {
+    const { page = 1, limit = 10, keyword = '', order = 'latest' } = req.query;
+    const parsedPage = Number(page);
+    const parsedLimit = Number(limit);
+    if (!Number.isInteger(parsedPage) || parsedPage < 1) {
       return fail(
         res,
         'VALIDATION_ERROR',
@@ -59,55 +48,54 @@ export const getStudies = async (req, res, next) => {
         400
       );
     }
-
-    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    if (
+      !Number.isInteger(parsedLimit) ||
+      parsedLimit < 1 ||
+      parsedLimit > MAX_LIMIT
+    ) {
       return fail(
         res,
         'VALIDATION_ERROR',
-        'limit은 1 이상 100 이하의 정수여야 합니다.',
+        `limit는 1~${MAX_LIMIT} 사이여야 합니다.`,
         400
       );
     }
-
-    const data = await studyService.findAllStudies({
-      page,
-      limit,
+    const resolvedOrder = order || 'latest';
+    if (!VALID_ORDERS.includes(resolvedOrder)) {
+      return fail(
+        res,
+        'VALIDATION_ERROR',
+        `order는 ${VALID_ORDERS.join(', ')} 중 하나여야 합니다.`,
+        400
+      );
+    }
+    const result = await studyService.findAllStudies({
+      page: parsedPage,
+      limit: parsedLimit,
       keyword,
-      order,
+      order: resolvedOrder,
     });
-
-    return success(res, data);
+    success(res, result);
   } catch (err) {
     next(err);
   }
 };
-
 export const getStudyById = async (req, res, next) => {
   try {
-    const studyId = Number(req.params.studyId);
-
-    if (Number.isNaN(studyId)) {
-      return fail(res, 'VALIDATION_ERROR', '유효한 studyId가 아닙니다.', 400);
-    }
-
-    const study = await studyService.findStudyById(studyId);
-
+    const { studyId } = req.params;
+    const study = await studyService.findStudyById(Number(studyId));
     if (!study) {
-      return fail(res, 'NOT_FOUND', '스터디를 찾을 수 없습니다.', 404);
+      return fail(res, 'NOT_FOUND', '해당 스터디를 찾을 수 없습니다.', 404);
     }
-
-    return success(res, study);
+    success(res, study);
   } catch (err) {
     next(err);
   }
 };
-
 export const verifyStudyPassword = async (req, res, next) => {
   try {
     const studyId = Number(req.params.studyId);
     const { password } = req.body;
-
-    console.log('[verifyStudyPassword] start', { studyId });
 
     if (Number.isNaN(studyId)) {
       return fail(res, 'VALIDATION_ERROR', '유효한 studyId가 아닙니다.', 400);
@@ -117,15 +105,7 @@ export const verifyStudyPassword = async (req, res, next) => {
       return fail(res, 'VALIDATION_ERROR', '비밀번호를 입력해주세요.', 400);
     }
 
-    const study = await studyService.findStudyById(studyId);
-    console.log('[verifyStudyPassword] study found:', !!study);
-
-    if (!study) {
-      return fail(res, 'NOT_FOUND', '스터디를 찾을 수 없습니다.', 404);
-    }
-
     const result = await studyService.verifyStudyPassword(studyId, password);
-    console.log('[verifyStudyPassword] verify result:', result);
 
     if (result?.error === 'NOT_FOUND') {
       return fail(res, 'NOT_FOUND', '스터디를 찾을 수 없습니다.', 404);
@@ -141,18 +121,9 @@ export const verifyStudyPassword = async (req, res, next) => {
       req.session.verifiedStudies.push(studyId);
     }
 
-    console.log(
-      '[verifyStudyPassword] before session.save',
-      req.session.verifiedStudies
-    );
-
     req.session.save((err) => {
-      if (err) {
-        console.error('[verifyStudyPassword] session save error:', err);
-        return next(err);
-      }
+      if (err) return next(err);
 
-      console.log('[verifyStudyPassword] session saved');
       return success(
         res,
         { studyId, verified: true },
@@ -161,89 +132,57 @@ export const verifyStudyPassword = async (req, res, next) => {
       );
     });
   } catch (err) {
-    console.error('[verifyStudyPassword] catch error:', err);
     next(err);
   }
 };
 
-export const checkStudySession = async (req, res, next) => {
-  try {
-    const studyId = Number(req.params.studyId);
-
-    if (Number.isNaN(studyId)) {
-      return fail(res, 'VALIDATION_ERROR', '유효한 studyId가 아닙니다.', 400);
-    }
-
-    const verified =
-      Array.isArray(req.session?.verifiedStudies) &&
-      req.session.verifiedStudies.includes(studyId);
-
-    return success(res, { studyId, verified });
-  } catch (err) {
-    next(err);
-  }
+export const checkStudySession = (req, res) => {
+  const studyId = Number(req.params.studyId);
+  const verified = req.session.verifiedStudies?.includes(studyId) ?? false;
+  success(res, { verified });
 };
 
 export const updateStudy = async (req, res, next) => {
   try {
-    const studyId = Number(req.params.studyId);
-
-    if (Number.isNaN(studyId)) {
-      return fail(res, 'VALIDATION_ERROR', '유효한 studyId가 아닙니다.', 400);
+    const { studyId } = req.params;
+    const { nickname, name, description, backgroundId } = req.body;
+    if (!nickname || !name || !backgroundId) {
+      return fail(res, 'VALIDATION_ERROR', '필수 항목이 누락되었습니다.', 400);
     }
-
-    const data = {
-      nickname: req.body.nickname,
-      name: req.body.name,
-      description: req.body.description,
-      backgroundId: req.body.backgroundId,
-    };
-
-    const updated = await studyService.updateStudy(studyId, data);
-
-    if (updated?.error === 'NOT_FOUND') {
-      return fail(res, 'NOT_FOUND', '스터디를 찾을 수 없습니다.', 404);
+    const result = await studyService.updateStudy(Number(studyId), {
+      nickname,
+      name,
+      description,
+      backgroundId,
+    });
+    if (result?.error === 'NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', '스터디가 존재하지 않습니다.', 404);
     }
-
-    return success(res, updated);
+    success(res, result, '스터디가 수정되었습니다.');
   } catch (err) {
     next(err);
   }
 };
-
 export const deleteStudy = async (req, res, next) => {
   try {
-    const studyId = Number(req.params.studyId);
+    const { studyId } = req.params;
     const { password } = req.body;
-
-    if (Number.isNaN(studyId)) {
-      return fail(res, 'VALIDATION_ERROR', '유효한 studyId가 아닙니다.', 400);
-    }
-
     if (!password) {
       return fail(res, 'VALIDATION_ERROR', '비밀번호를 입력해주세요.', 400);
     }
-
-    const result = await studyService.deleteStudy(studyId, password);
-
+    const result = await studyService.deleteStudy(Number(studyId), password);
     if (result?.error === 'NOT_FOUND') {
-      return fail(res, 'NOT_FOUND', '스터디를 찾을 수 없습니다.', 404);
+      return fail(res, 'NOT_FOUND', '스터디가 존재하지 않습니다.', 404);
     }
-
     if (result?.error === 'INVALID_PASSWORD') {
-      return fail(res, 'UNAUTHORIZED', '비밀번호가 일치하지 않습니다.', 401);
-    }
-
-    if (Array.isArray(req.session?.verifiedStudies)) {
-      req.session.verifiedStudies = req.session.verifiedStudies.filter(
-        (id) => id !== studyId
+      return fail(
+        res,
+        'VALIDATION_ERROR',
+        '비밀번호가 일치하지 않습니다.',
+        400
       );
     }
-
-    req.session.save((err) => {
-      if (err) return next(err);
-      return success(res, null, 'deleted', 200);
-    });
+    success(res, null, 'deleted');
   } catch (err) {
     next(err);
   }
