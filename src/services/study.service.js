@@ -2,12 +2,24 @@ import argon2 from 'argon2';
 import prisma from '../lib/prisma.js';
 
 const toAbsoluteUrl = (imageUrl) => {
-  const base = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+  if (!imageUrl) return imageUrl;
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+
+  const base =
+    process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+
   return `${base}${imageUrl}`;
 };
 
 const normalizeBackground = (background) =>
-  background ? { ...background, imageUrl: toAbsoluteUrl(background.imageUrl) } : null;
+  background
+    ? {
+        ...background,
+        imageUrl: toAbsoluteUrl(background.imageUrl),
+      }
+    : null;
 
 export const createStudy = async (data) => {
   const hashedPassword = await argon2.hash(data.password);
@@ -16,10 +28,14 @@ export const createStudy = async (data) => {
     data: {
       nickname: data.nickname,
       name: data.name,
-      description: data.description,
+      description: data.description ?? '',
       backgroundId: Number(data.backgroundId),
       password: hashedPassword,
-      point: { create: {} },
+      point: {
+        create: {
+          totalPoint: 0,
+        },
+      },
     },
     select: {
       id: true,
@@ -27,12 +43,20 @@ export const createStudy = async (data) => {
       name: true,
       description: true,
       background: {
-        select: { id: true, name: true, imageUrl: true },
+        select: {
+          id: true,
+          name: true,
+          imageUrl: true,
+        },
       },
       createdAt: true,
     },
   });
-  return { ...study, background: normalizeBackground(study.background) };
+
+  return {
+    ...study,
+    background: normalizeBackground(study.background),
+  };
 };
 
 export const findAllStudies = async ({ page, limit, keyword, order }) => {
@@ -83,6 +107,21 @@ export const findAllStudies = async ({ page, limit, keyword, order }) => {
           imageUrl: true,
         },
       },
+      point: {
+        select: {
+          totalPoint: true,
+        },
+      },
+      emojiReactions: {
+        select: {
+          id: true,
+          emoji: true,
+          count: true,
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      },
     },
     orderBy,
     skip,
@@ -90,7 +129,10 @@ export const findAllStudies = async ({ page, limit, keyword, order }) => {
   });
 
   return {
-    items: items.map((s) => ({ ...s, background: normalizeBackground(s.background) })),
+    items: items.map((study) => ({
+      ...study,
+      background: normalizeBackground(study.background),
+    })),
     totalCount,
     page,
     limit,
@@ -106,14 +148,28 @@ export const findStudyById = async (id) => {
       name: true,
       description: true,
       background: {
-        select: { id: true, name: true, imageUrl: true },
+        select: {
+          id: true,
+          name: true,
+          imageUrl: true,
+        },
+      },
+      point: {
+        select: {
+          totalPoint: true,
+        },
       },
       createdAt: true,
       updatedAt: true,
     },
   });
+
   if (!study) return null;
-  return { ...study, background: normalizeBackground(study.background) };
+
+  return {
+    ...study,
+    background: normalizeBackground(study.background),
+  };
 };
 
 export const verifyStudyPassword = async (id, password) => {
@@ -141,9 +197,7 @@ export const verifyStudyPassword = async (id, password) => {
 export const updateStudy = async (id, data) => {
   const study = await prisma.study.findUnique({
     where: { id },
-    select: {
-      id: true,
-    },
+    select: { id: true },
   });
 
   if (!study) {
@@ -168,12 +222,25 @@ export const updateStudy = async (id, data) => {
       name: true,
       description: true,
       background: {
-        select: { id: true, name: true, imageUrl: true },
+        select: {
+          id: true,
+          name: true,
+          imageUrl: true,
+        },
+      },
+      point: {
+        select: {
+          totalPoint: true,
+        },
       },
       updatedAt: true,
     },
   });
-  return { ...updated, background: normalizeBackground(updated.background) };
+
+  return {
+    ...updated,
+    background: normalizeBackground(updated.background),
+  };
 };
 
 export const deleteStudy = async (id, password) => {
@@ -190,11 +257,12 @@ export const deleteStudy = async (id, password) => {
   }
 
   const isMatch = await argon2.verify(study.password, password);
+
   if (!isMatch) {
     return { error: 'INVALID_PASSWORD' };
   }
 
-  return await prisma.study.delete({
+  return prisma.study.delete({
     where: { id },
   });
 };

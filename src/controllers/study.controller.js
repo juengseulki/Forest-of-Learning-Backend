@@ -1,131 +1,249 @@
-import * as habitService from '../services/habit.service.js';
+import * as studyService from '../services/study.service.js';
 import { success, fail } from '../utils/response.js';
 
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const isValidDate = (str) => {
-  if (!ISO_DATE_RE.test(str)) return false;
-  const [y, m, d] = str.split('-').map(Number);
-  if (m < 1 || m > 12 || d < 1) return false;
-  const daysInMonth = new Date(y, m, 0).getDate();
-  return d <= daysInMonth;
-};
+const VALID_ORDERS = ['latest', 'oldest', 'pointDesc', 'pointAsc'];
 
-export const createHabit = async (req, res, next) => {
+export const createStudy = async (req, res, next) => {
   try {
-    const { studyId, name } = req.body;
-    const trimmedName = typeof name === 'string' ? name.trim() : '';
-    if (!trimmedName)
-      return fail(res, 'INVALID_INPUT', '습관 이름을 입력해주세요.');
-    if (trimmedName.length > 50)
-      return fail(res, 'INVALID_INPUT', '습관 이름은 50자 이하여야 합니다.');
-    const habit = await habitService.createHabit({
-      studyId: Number(studyId),
-      name: trimmedName,
+    const {
+      nickname,
+      name,
+      description,
+      backgroundId,
+      password,
+      passwordConfirm,
+    } = req.body;
+
+    if (!nickname || !name || !backgroundId || !password || !passwordConfirm) {
+      return fail(res, 'VALIDATION_ERROR', '필수 항목이 누락되었습니다.', 400);
+    }
+
+    if (password !== passwordConfirm) {
+      return fail(
+        res,
+        'VALIDATION_ERROR',
+        '비밀번호와 비밀번호 확인이 일치하지 않습니다.',
+        400
+      );
+    }
+
+    const study = await studyService.createStudy({
+      nickname,
+      name,
+      description,
+      backgroundId: Number(backgroundId),
+      password,
     });
-    success(res, habit, 'created', 201);
+
+    return success(res, study, 'created', 201);
   } catch (err) {
     next(err);
   }
 };
 
-export const getHabits = async (req, res, next) => {
+export const getStudies = async (req, res, next) => {
   try {
-    const { studyId } = req.query;
-    const items = await habitService.findHabitsByStudyId(Number(studyId));
-    success(res, { items });
-  } catch (err) {
-    next(err);
-  }
-};
+    const page = Number(req.query.page ?? 1);
+    const limit = Number(req.query.limit ?? 10);
+    const keyword =
+      typeof req.query.keyword === 'string' ? req.query.keyword.trim() : '';
+    const order = VALID_ORDERS.includes(req.query.order)
+      ? req.query.order
+      : 'latest';
 
-export const updateHabit = async (req, res, next) => {
-  try {
-    const { habitId } = req.params;
-    const { name, isEnded } = req.body;
-    const updateData = {};
-    if (name !== undefined) {
-      const trimmedName = typeof name === 'string' ? name.trim() : '';
-      if (!trimmedName)
-        return fail(res, 'INVALID_INPUT', '습관 이름을 입력해주세요.');
-      if (trimmedName.length > 50)
-        return fail(res, 'INVALID_INPUT', '습관 이름은 50자 이하여야 합니다.');
-      updateData.name = trimmedName;
+    if (!Number.isInteger(page) || page < 1) {
+      return fail(
+        res,
+        'VALIDATION_ERROR',
+        'page는 1 이상의 정수여야 합니다.',
+        400
+      );
     }
-    if (isEnded !== undefined) {
-      if (typeof isEnded !== 'boolean')
-        return fail(res, 'INVALID_INPUT', 'isEnded는 true/false여야 합니다.');
-      updateData.isEnded = isEnded;
+
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+      return fail(
+        res,
+        'VALIDATION_ERROR',
+        'limit은 1 이상 100 이하의 정수여야 합니다.',
+        400
+      );
     }
-    if (Object.keys(updateData).length === 0)
-      return fail(res, 'INVALID_INPUT', '수정할 항목이 없습니다.');
-    const habit = await habitService.updateHabit(Number(habitId), updateData);
-    success(res, habit);
+
+    const data = await studyService.findAllStudies({
+      page,
+      limit,
+      keyword,
+      order,
+    });
+
+    return success(res, data);
   } catch (err) {
     next(err);
   }
 };
 
-export const deleteHabit = async (req, res, next) => {
+export const getStudyById = async (req, res, next) => {
   try {
-    const { habitId } = req.params;
-    await habitService.deleteHabit(Number(habitId));
-    success(res, null, 'deleted');
+    const studyId = Number(req.params.studyId);
+
+    if (Number.isNaN(studyId)) {
+      return fail(res, 'VALIDATION_ERROR', '유효한 studyId가 아닙니다.', 400);
+    }
+
+    const study = await studyService.findStudyById(studyId);
+
+    if (!study) {
+      return fail(res, 'NOT_FOUND', '스터디를 찾을 수 없습니다.', 404);
+    }
+
+    return success(res, study);
   } catch (err) {
     next(err);
   }
 };
 
-export const upsertHabitRecord = async (req, res, next) => {
+export const verifyStudyPassword = async (req, res, next) => {
   try {
-    const { habitId } = req.params;
-    const { date, completed } = req.body;
-    if (!isValidDate(date))
-      return fail(
-        res,
-        'INVALID_INPUT',
-        '날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)'
-      );
-    if (typeof completed !== 'boolean')
-      return fail(res, 'INVALID_INPUT', 'completed는 true/false여야 합니다.');
-    const record = await habitService.upsertHabitRecord(
-      Number(habitId),
-      date,
-      completed
+    const studyId = Number(req.params.studyId);
+    const { password } = req.body;
+
+    console.log('[verifyStudyPassword] start', { studyId });
+
+    if (Number.isNaN(studyId)) {
+      return fail(res, 'VALIDATION_ERROR', '유효한 studyId가 아닙니다.', 400);
+    }
+
+    if (!password) {
+      return fail(res, 'VALIDATION_ERROR', '비밀번호를 입력해주세요.', 400);
+    }
+
+    const study = await studyService.findStudyById(studyId);
+    console.log('[verifyStudyPassword] study found:', !!study);
+
+    if (!study) {
+      return fail(res, 'NOT_FOUND', '스터디를 찾을 수 없습니다.', 404);
+    }
+
+    const result = await studyService.verifyStudyPassword(studyId, password);
+    console.log('[verifyStudyPassword] verify result:', result);
+
+    if (result?.error === 'NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', '스터디를 찾을 수 없습니다.', 404);
+    }
+
+    if (result?.error === 'INVALID_PASSWORD') {
+      return fail(res, 'UNAUTHORIZED', '비밀번호가 일치하지 않습니다.', 401);
+    }
+
+    req.session.verifiedStudies = req.session.verifiedStudies || [];
+
+    if (!req.session.verifiedStudies.includes(studyId)) {
+      req.session.verifiedStudies.push(studyId);
+    }
+
+    console.log(
+      '[verifyStudyPassword] before session.save',
+      req.session.verifiedStudies
     );
-    success(res, record);
+
+    req.session.save((err) => {
+      if (err) {
+        console.error('[verifyStudyPassword] session save error:', err);
+        return next(err);
+      }
+
+      console.log('[verifyStudyPassword] session saved');
+      return success(
+        res,
+        { studyId, verified: true },
+        '비밀번호 인증에 성공했습니다.',
+        200
+      );
+    });
+  } catch (err) {
+    console.error('[verifyStudyPassword] catch error:', err);
+    next(err);
+  }
+};
+
+export const checkStudySession = async (req, res, next) => {
+  try {
+    const studyId = Number(req.params.studyId);
+
+    if (Number.isNaN(studyId)) {
+      return fail(res, 'VALIDATION_ERROR', '유효한 studyId가 아닙니다.', 400);
+    }
+
+    const verified =
+      Array.isArray(req.session?.verifiedStudies) &&
+      req.session.verifiedStudies.includes(studyId);
+
+    return success(res, { studyId, verified });
   } catch (err) {
     next(err);
   }
 };
 
-export const getHabitRecords = async (req, res, next) => {
+export const updateStudy = async (req, res, next) => {
   try {
-    const { studyId } = req.params;
-    const { weekStart, weekEnd } = req.query;
-    if (!isValidDate(weekStart))
-      return fail(
-        res,
-        'INVALID_INPUT',
-        'weekStart 날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)'
+    const studyId = Number(req.params.studyId);
+
+    if (Number.isNaN(studyId)) {
+      return fail(res, 'VALIDATION_ERROR', '유효한 studyId가 아닙니다.', 400);
+    }
+
+    const data = {
+      nickname: req.body.nickname,
+      name: req.body.name,
+      description: req.body.description,
+      backgroundId: req.body.backgroundId,
+    };
+
+    const updated = await studyService.updateStudy(studyId, data);
+
+    if (updated?.error === 'NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', '스터디를 찾을 수 없습니다.', 404);
+    }
+
+    return success(res, updated);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteStudy = async (req, res, next) => {
+  try {
+    const studyId = Number(req.params.studyId);
+    const { password } = req.body;
+
+    if (Number.isNaN(studyId)) {
+      return fail(res, 'VALIDATION_ERROR', '유효한 studyId가 아닙니다.', 400);
+    }
+
+    if (!password) {
+      return fail(res, 'VALIDATION_ERROR', '비밀번호를 입력해주세요.', 400);
+    }
+
+    const result = await studyService.deleteStudy(studyId, password);
+
+    if (result?.error === 'NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', '스터디를 찾을 수 없습니다.', 404);
+    }
+
+    if (result?.error === 'INVALID_PASSWORD') {
+      return fail(res, 'UNAUTHORIZED', '비밀번호가 일치하지 않습니다.', 401);
+    }
+
+    if (Array.isArray(req.session?.verifiedStudies)) {
+      req.session.verifiedStudies = req.session.verifiedStudies.filter(
+        (id) => id !== studyId
       );
-    if (!isValidDate(weekEnd))
-      return fail(
-        res,
-        'INVALID_INPUT',
-        'weekEnd 날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)'
-      );
-    if (new Date(weekStart) > new Date(weekEnd))
-      return fail(
-        res,
-        'INVALID_INPUT',
-        'weekStart는 weekEnd보다 이전이어야 합니다.'
-      );
-    const items = await habitService.findHabitRecords(
-      Number(studyId),
-      weekStart,
-      weekEnd
-    );
-    success(res, { weekStart, weekEnd, items });
+    }
+
+    req.session.save((err) => {
+      if (err) return next(err);
+      return success(res, null, 'deleted', 200);
+    });
   } catch (err) {
     next(err);
   }
