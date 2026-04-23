@@ -53,11 +53,12 @@ app.use(
     secret: process.env.SESSION_SECRET || 'forest-dev-secret',
     resave: false,
     saveUninitialized: false,
+    rolling: true,
     cookie: {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? 'none' : 'lax',
-      maxAge: 24 * 60 * 60 * 1000,
+      maxAge: 3 * 60 * 60 * 1000,
     },
   })
 );
