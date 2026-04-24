@@ -86,6 +86,11 @@ export const findAllStudies = async ({ page, limit, keyword, order }) => {
           imageUrl: true,
         },
       },
+      point: {
+        select: {
+          totalPoint: true,
+        },
+      },
     },
     orderBy,
     skip,
