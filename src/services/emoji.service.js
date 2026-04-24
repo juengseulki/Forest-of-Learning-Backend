@@ -22,6 +22,6 @@ export const addEmojiReaction = async (data) => {
 export const findEmojiReactionsByStudyId = async (studyId) => {
   return await prisma.emojiReaction.findMany({
     where: { studyId },
-    orderBy: { createdAt: 'asc' },
+    orderBy: { count: 'desc' },
   });
 };
