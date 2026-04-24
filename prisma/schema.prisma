@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Study {
+  id             Int             @id @default(autoincrement())
+  nickname       String
+  name           String
+  description    String
+  password       String
+  backgroundId   Int
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  emojiReactions EmojiReaction[]
+  focusSessions  FocusSession[]
+  habits         Habit[]
+  point          Point?
+  pointLogs      PointLog[]
+  background     Background      @relation(fields: [backgroundId], references: [id])
+
+  @@index([backgroundId])
+  @@index([createdAt])
+  @@index([name])
+}
+
+model Point {
+  id         Int      @id @default(autoincrement())
+  studyId    Int      @unique
+  totalPoint Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  study      Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
+}
+
+
+model PointLog {
+  id             Int           @id @default(autoincrement())
+  studyId        Int           
+  amount         Int
+  reason         String
+  focusSessionId Int?          
+  createdAt      DateTime      @default(now())
+
+  study          Study         @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  focusSession   FocusSession? @relation(fields: [focusSessionId], references: [id])
+
+  @@index([studyId])
+}
+
+model Background {
+  id        Int      @id @default(autoincrement())
+  name      String
+  imageUrl  String
+  createdAt DateTime @default(now())
+  studies   Study[]
+}
+
+model Habit {
+  id           Int           @id @default(autoincrement())
+  studyId      Int
+  name         String
+  isEnded      Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  study        Study         @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  habitRecords HabitRecord[]
+
+  @@index([studyId])
+}
+
+model HabitRecord {
+  id        Int      @id @default(autoincrement())
+  habitId   Int
+  date      DateTime
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+  @@index([date])
+}
+
+model FocusSession {
+  id          Int        @id @default(autoincrement())
+  studyId     Int
+  duration    Int
+  earnedPoint Int        @default(0)
+  startedAt   DateTime
+  completedAt DateTime
+  study       Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  pointLogs   PointLog[]
+
+  @@index([studyId, startedAt])
+}
+
+model EmojiReaction {
+  id        Int      @id @default(autoincrement())
+  studyId   Int
+  emoji     String
+  createdAt DateTime @default(now())
+  count     Int
+  study     Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
+
+  @@unique([studyId, emoji])
+}
