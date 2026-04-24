@@ -23,7 +23,7 @@ router.post('/', validateCreateStudy, createStudy);
 router.get('/', getStudies);
 
 router.get(
-  '/:studyId/verify-session',
+  '/:studyId/check-session',
   numericParams('studyId'),
   checkStudySession
 );
