@@ -37,6 +37,7 @@ model Point {
   study      Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
 }
 
+
 model PointLog {
   id             Int           @id @default(autoincrement())
   studyId        Int           
