@@ -1,4 +1,5 @@
 import * as pointService from '../services/point.service.js';
+import { POINT_REASON_VALUES } from '../utils/pointReason.js';
 import { success, fail } from '../utils/response.js';
 
 export const getPoint = async (req, res, next) => {
@@ -29,8 +30,22 @@ export const addPoints = async (req, res, next) => {
     const { amount: rawAmount, reason = 'ETC', focusSessionId } = req.body;
     const amount = Number(rawAmount);
     if (!Number.isInteger(amount) || amount <= 0 || amount > 10000) {
-      return fail(res, 'INVALID_INPUT', 'amount는 1 이상 10000 이하의 정수여야 합니다.');
+      return fail(
+        res,
+        'INVALID_INPUT',
+        'amount는 1 이상 10000 이하의 정수여야 합니다.'
+      );
     }
+
+    if (!POINT_REASON_VALUES.includes(reason)) {
+      return fail(
+        res,
+        'INVALID_INPUT',
+        `reason은 ${POINT_REASON_VALUES.join(', ')} 중 하나여야 합니다.`,
+        400
+      );
+    }
+
     const point = await pointService.addPointsWithLog(
       Number(studyId),
       amount,

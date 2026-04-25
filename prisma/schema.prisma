@@ -49,7 +49,7 @@ model PointLog {
   study          Study         @relation(fields: [studyId], references: [id], onDelete: Cascade)
   focusSession   FocusSession? @relation(fields: [focusSessionId], references: [id])
 
-  @@index([studyId])
+  @@index([studyId, createdAt])
 }
 
 model Background {
@@ -95,7 +95,7 @@ model FocusSession {
   study       Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
   pointLogs   PointLog[]
 
-  @@index([studyId, startedAt])
+  @@index([studyId, completedAt])
 }
 
 model EmojiReaction {
@@ -103,7 +103,7 @@ model EmojiReaction {
   studyId   Int
   emoji     String
   createdAt DateTime @default(now())
-  count     Int
+  count     Int      @default(0)
   study     Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
 
   @@unique([studyId, emoji])
