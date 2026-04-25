@@ -8,6 +8,20 @@ export const passwordLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: {
-    error: { code: 'TOO_MANY_REQUESTS', message: '비밀번호를 5회 이상 틀렸습니다. 5분 후 다시 시도해주세요.' },
+    error: {
+      code: 'TOO_MANY_REQUESTS',
+      message: '비밀번호를 5회 이상 틀렸습니다. 5분 후 다시 시도해주세요.',
+    },
+  },
+});
+
+export const translateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: {
+    error: {
+      code: 'TOO_MANY_TRANSLATE_REQUESTS',
+      message: '번역 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
+    },
   },
 });
