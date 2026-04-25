@@ -15,7 +15,7 @@ import {
 } from '../middlewares/validateStudy.js';
 import { passwordLimiter } from '../middlewares/rateLimiter.js';
 import { numericParams } from '../middlewares/validateParams.js';
-import { verifyStudyPasswordByStudyId } from '../middlewares/verifyPassword.js';
+import { verifyStudyAuth } from '../middlewares/verifyPassword.js';
 
 const router = express.Router();
 
@@ -40,7 +40,7 @@ router.get('/:studyId', numericParams('studyId'), getStudyById);
 router.patch(
   '/:studyId',
   numericParams('studyId'),
-  verifyStudyPasswordByStudyId,
+  verifyStudyAuth,
   validateUpdateStudy,
   updateStudy
 );

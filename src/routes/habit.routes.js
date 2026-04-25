@@ -9,7 +9,7 @@ import {
 } from '../controllers/habit.controller.js';
 import { numericParams } from '../middlewares/validateParams.js';
 import {
-  verifyStudyPasswordByStudyId,
+  verifyStudyAuth,
   verifyStudyPasswordByHabitId,
 } from '../middlewares/verifyPassword.js';
 
@@ -17,12 +17,7 @@ const router = express.Router();
 
 router.get('/', numericParams('studyId'), getHabits);
 
-router.post(
-  '/',
-  numericParams('studyId'),
-  verifyStudyPasswordByStudyId,
-  createHabit
-);
+router.post('/', numericParams('studyId'), verifyStudyAuth, createHabit);
 
 router.get('/:studyId/records', numericParams('studyId'), getHabitRecords);
 
