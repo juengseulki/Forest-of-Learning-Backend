@@ -1,21 +1,39 @@
 import prisma from '../lib/prisma.js';
 import { fail } from '../utils/response.js';
 
+function getStudyIdFromRequest(req) {
+  return Number(req.params.studyId ?? req.body.studyId ?? req.query.studyId);
+}
+
 export const verifyStudyPasswordByStudyId = (req, res, next) => {
-  const studyId = Number(req.params.studyId);
+  const studyId = getStudyIdFromRequest(req);
+
+  if (!studyId || Number.isNaN(studyId)) {
+    return fail(res, 'BAD_REQUEST', 'studyId가 필요합니다.', 400);
+  }
+
   if (req.session.verifiedStudies?.includes(studyId)) return next();
+
   return fail(res, 'UNAUTHORIZED', '스터디 비밀번호 인증이 필요합니다.', 401);
 };
 
 export const verifyStudyPasswordByHabitId = async (req, res, next) => {
   try {
     const habitId = Number(req.params.habitId);
+
+    if (!habitId || Number.isNaN(habitId)) {
+      return fail(res, 'BAD_REQUEST', 'habitId가 필요합니다.', 400);
+    }
+
     const habit = await prisma.habit.findUnique({
       where: { id: habitId },
       select: { studyId: true },
     });
+
     if (!habit) return fail(res, 'NOT_FOUND', '습관을 찾을 수 없습니다.', 404);
+
     if (req.session.verifiedStudies?.includes(habit.studyId)) return next();
+
     return fail(res, 'UNAUTHORIZED', '스터디 비밀번호 인증이 필요합니다.', 401);
   } catch (err) {
     next(err);
