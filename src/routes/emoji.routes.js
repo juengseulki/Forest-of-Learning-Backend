@@ -10,6 +10,6 @@ const router = express.Router();
 
 router.get('/', numericParams('studyId'), getEmojiReactions);
 
-router.post('/', numericParams('studyId'), verifyStudyAuth, addEmojiReaction);
+router.post('/', numericParams('studyId'), addEmojiReaction);
 
 export default router;
