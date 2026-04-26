@@ -17,7 +17,7 @@ export const passwordLimiter = rateLimit({
 
 export const translateLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 30,
+  max: 60,
   message: {
     error: {
       code: 'TOO_MANY_TRANSLATE_REQUESTS',
